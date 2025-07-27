@@ -35,22 +35,6 @@
     },
     {
       "parameters": {
-        "url": "https://www.dawn.com/",
-        "options": {
-          "timeout": 30000
-        }
-      },
-      "id": "scrape-dawn",
-      "name": "Scrape Dawn",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [
-        460,
-        400
-      ]
-    },
-    {
-      "parameters": {
         "mode": "runOnceForAllItems",
         "jsCode": "// Extract news articles from Tribune website\nconst cheerio = require('cheerio');\nconst articles = [];\n\nfor (const item of $input.all()) {\n  const html = item.json.data || item.json;\n  const $ = cheerio.load(html);\n  \n  // Tribune.com.pk article selectors\n  $('article, .story, .post').each((index, element) => {\n    const $article = $(element);\n    \n    // Extract article data\n    const title = $article.find('h2, h3, .title, .headline').first().text().trim();\n    const link = $article.find('a').first().attr('href');\n    const summary = $article.find('p, .excerpt, .summary').first().text().trim();\n    const image = $article.find('img').first().attr('src');\n    const timeElement = $article.find('time, .date, .timestamp');\n    const publishedDate = timeElement.attr('datetime') || timeElement.text().trim();\n    \n    if (title && title.length > 10) {\n      const fullUrl = link && link.startsWith('http') ? link : `https://tribune.com.pk${link}`;\n      \n      articles.push({\n        title: title,\n        summary: summary || title.substring(0, 200) + '...',\n        source_url: fullUrl,\n        source: 'The Express Tribune',\n        image_url: image && image.startsWith('http') ? image : (image ? `https://tribune.com.pk${image}` : null),\n        published_at: publishedDate || new Date().toISOString(),\n        region: 'Pakistan',\n        city: 'Multiple',\n        content: summary || title\n      });\n    }\n  });\n  \n  // Alternative selectors for Tribune\n  $('.story-list .story-item, .news-item, .article-item').each((index, element) => {\n    const $article = $(element);\n    \n    const title = $article.find('h1, h2, h3, .story-title, .news-title').first().text().trim();\n    const link = $article.find('a').first().attr('href');\n    const summary = $article.find('.story-excerpt, .news-excerpt, p').first().text().trim();\n    const image = $article.find('img').first().attr('src');\n    \n    if (title && title.length > 10 && !articles.find(a => a.title === title)) {\n      const fullUrl = link && link.startsWith('http') ? link : `https://tribune.com.pk${link}`;\n      \n      articles.push({\n        title: title,\n        summary: summary || title.substring(0, 200) + '...',\n        source_url: fullUrl,\n        source: 'The Express Tribune',\n        image_url: image && image.startsWith('http') ? image : (image ? `https://tribune.com.pk${image}` : null),\n        published_at: new Date().toISOString(),\n        region: 'Pakistan',\n        city: 'Multiple',\n        content: summary || title\n      });\n    }\n  });\n}\n\n// Limit to top 15 articles and remove duplicates\nconst uniqueArticles = articles\n  .filter((article, index, self) => \n    index === self.findIndex(a => a.title === article.title)\n  )\n  .slice(0, 15);\n\nreturn uniqueArticles.map(article => ({ json: article }));"
       },
@@ -94,21 +78,26 @@
     },
     {
       "parameters": {
-        "resource": "text",
-        "operation": "summarize",
-        "text": "={{ $json.content || $json.summary }}",
+        "promptType": "define",
+        "text": "You are a Pakistani news summarization AI. Please summarize the following Express Tribune news article in 2-3 concise sentences. Focus on the key facts, maintain objectivity, and ensure the summary is clear and informative for Pakistani readers.\n\nArticle Title: {{ $json.title }}\nArticle Content: {{ $json.content || $json.summary }}\n\nProvide a summary that:\n- Captures the main story points\n- Is relevant to Pakistani context\n- Uses clear, professional language\n- Is between 100-150 words",
         "options": {
-          "maxLength": 150
+          "systemMessage": "You are a professional news summarization AI specialized in Pakistani news content."
         }
       },
       "id": "ai-summarize",
       "name": "AI Summarize Content",
-      "type": "@n8n/n8n-nodes-langchain.aiAgent",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        1120,
-        300
-      ]
+        900,
+        200
+      ],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "gemini-api",
+          "name": "Google Gemini API"
+        }
+      }
     },
     {
       "parameters": {

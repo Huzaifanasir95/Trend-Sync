@@ -15,19 +15,22 @@ export function NewsScrapingPanel() {
     setResult(null)
 
     try {
-      const response = await fetch('/api/news/scrape', {
+      const response = await fetch('/api/trigger-news-scraping', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          region: "Pakistan",
-          sources: ["Tribune", "Dawn"]
-        })
       })
 
       const data = await response.json()
       setResult(data)
+      
+      // Refresh the page after 3 seconds to show new articles
+      if (data.success) {
+        setTimeout(() => {
+          window.location.reload()
+        }, 3000)
+      }
     } catch (error) {
       setResult({
         success: false,

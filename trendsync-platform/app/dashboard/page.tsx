@@ -5,6 +5,7 @@ import { RegionSelector } from "@/components/region-selector"
 import { PostHistory } from "@/components/post-history"
 import { RecentNews } from "@/components/recent-news"
 import { NewsScrapingPanel } from "@/components/news-scraping-panel"
+import { KeywordManager } from "@/components/keyword-manager"
 
 export default function DashboardPage() {
   return (
@@ -17,6 +18,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 space-y-8">
             <StatsCards />
             <NewsScrapingPanel />
+            <KeywordManager />
             <RegionSelector />
             <Suspense fallback={<div>Loading recent news...</div>}>
               <RecentNews />
