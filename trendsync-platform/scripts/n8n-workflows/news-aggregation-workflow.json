@@ -1,0 +1,376 @@
+{
+  "name": "TrendSync Pakistan News Aggregation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "news-scraping",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://tribune.com.pk/",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "scrape-tribune",
+      "name": "Scrape Tribune",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        460,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.dawn.com/",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "scrape-dawn",
+      "name": "Scrape Dawn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        460,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Extract news articles from Tribune website\nconst cheerio = require('cheerio');\nconst articles = [];\n\nfor (const item of $input.all()) {\n  const html = item.json.data || item.json;\n  const $ = cheerio.load(html);\n  \n  // Tribune.com.pk article selectors\n  $('article, .story, .post').each((index, element) => {\n    const $article = $(element);\n    \n    // Extract article data\n    const title = $article.find('h2, h3, .title, .headline').first().text().trim();\n    const link = $article.find('a').first().attr('href');\n    const summary = $article.find('p, .excerpt, .summary').first().text().trim();\n    const image = $article.find('img').first().attr('src');\n    const timeElement = $article.find('time, .date, .timestamp');\n    const publishedDate = timeElement.attr('datetime') || timeElement.text().trim();\n    \n    if (title && title.length > 10) {\n      const fullUrl = link && link.startsWith('http') ? link : `https://tribune.com.pk${link}`;\n      \n      articles.push({\n        title: title,\n        summary: summary || title.substring(0, 200) + '...',\n        source_url: fullUrl,\n        source: 'The Express Tribune',\n        image_url: image && image.startsWith('http') ? image : (image ? `https://tribune.com.pk${image}` : null),\n        published_at: publishedDate || new Date().toISOString(),\n        region: 'Pakistan',\n        city: 'Multiple',\n        content: summary || title\n      });\n    }\n  });\n  \n  // Alternative selectors for Tribune\n  $('.story-list .story-item, .news-item, .article-item').each((index, element) => {\n    const $article = $(element);\n    \n    const title = $article.find('h1, h2, h3, .story-title, .news-title').first().text().trim();\n    const link = $article.find('a').first().attr('href');\n    const summary = $article.find('.story-excerpt, .news-excerpt, p').first().text().trim();\n    const image = $article.find('img').first().attr('src');\n    \n    if (title && title.length > 10 && !articles.find(a => a.title === title)) {\n      const fullUrl = link && link.startsWith('http') ? link : `https://tribune.com.pk${link}`;\n      \n      articles.push({\n        title: title,\n        summary: summary || title.substring(0, 200) + '...',\n        source_url: fullUrl,\n        source: 'The Express Tribune',\n        image_url: image && image.startsWith('http') ? image : (image ? `https://tribune.com.pk${image}` : null),\n        published_at: new Date().toISOString(),\n        region: 'Pakistan',\n        city: 'Multiple',\n        content: summary || title\n      });\n    }\n  });\n}\n\n// Limit to top 15 articles and remove duplicates\nconst uniqueArticles = articles\n  .filter((article, index, self) => \n    index === self.findIndex(a => a.title === article.title)\n  )\n  .slice(0, 15);\n\nreturn uniqueArticles.map(article => ({ json: article }));"
+      },
+      "id": "extract-tribune-articles",
+      "name": "Extract Tribune Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Extract news articles from Dawn website\nconst cheerio = require('cheerio');\nconst articles = [];\n\nfor (const item of $input.all()) {\n  const html = item.json.data || item.json;\n  const $ = cheerio.load(html);\n  \n  // Dawn.com article selectors\n  $('article, .story, .box').each((index, element) => {\n    const $article = $(element);\n    \n    // Extract article data\n    const title = $article.find('h2, h3, .story__title, .story__headline').first().text().trim();\n    const link = $article.find('a').first().attr('href');\n    const summary = $article.find('p, .story__excerpt').first().text().trim();\n    const image = $article.find('img').first().attr('src') || $article.find('img').first().attr('data-src');\n    const timeElement = $article.find('time, .timestamp, .story__time');\n    const publishedDate = timeElement.attr('datetime') || timeElement.text().trim();\n    \n    if (title && title.length > 10) {\n      const fullUrl = link && link.startsWith('http') ? link : `https://www.dawn.com${link}`;\n      \n      articles.push({\n        title: title,\n        summary: summary || title.substring(0, 200) + '...',\n        source_url: fullUrl,\n        source: 'Dawn',\n        image_url: image && image.startsWith('http') ? image : (image ? `https://www.dawn.com${image}` : null),\n        published_at: publishedDate || new Date().toISOString(),\n        region: 'Pakistan',\n        city: 'Multiple',\n        content: summary || title\n      });\n    }\n  });\n  \n  // Alternative selectors for Dawn\n  $('.story, .news-story, .latest-news li').each((index, element) => {\n    const $article = $(element);\n    \n    const title = $article.find('h1, h2, h3, a').first().text().trim();\n    const link = $article.find('a').first().attr('href');\n    const summary = $article.find('p, .excerpt').first().text().trim();\n    const image = $article.find('img').first().attr('src') || $article.find('img').first().attr('data-src');\n    \n    if (title && title.length > 10 && !articles.find(a => a.title === title)) {\n      const fullUrl = link && link.startsWith('http') ? link : `https://www.dawn.com${link}`;\n      \n      articles.push({\n        title: title,\n        summary: summary || title.substring(0, 200) + '...',\n        source_url: fullUrl,\n        source: 'Dawn',\n        image_url: image && image.startsWith('http') ? image : (image ? `https://www.dawn.com${image}` : null),\n        published_at: new Date().toISOString(),\n        region: 'Pakistan',\n        city: 'Multiple',\n        content: summary || title\n      });\n    }\n  });\n}\n\n// Limit to top 15 articles and remove duplicates\nconst uniqueArticles = articles\n  .filter((article, index, self) => \n    index === self.findIndex(a => a.title === article.title)\n  )\n  .slice(0, 15);\n\nreturn uniqueArticles.map(article => ({ json: article }));"
+      },
+      "id": "extract-dawn-articles",
+      "name": "Extract Dawn Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "id": "merge-news-sources",
+      "name": "Merge News Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "summarize",
+        "text": "={{ $json.content || $json.summary }}",
+        "options": {
+          "maxLength": 150
+        }
+      },
+      "id": "ai-summarize",
+      "name": "AI Summarize Content",
+      "type": "@n8n/n8n-nodes-langchain.aiAgent",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Process and clean article data for Pakistani news\nconst processedArticles = [];\n\nfor (const item of $input.all()) {\n  const article = item.json;\n  \n  // Generate slug from title\n  const slug = article.title\n    .toLowerCase()\n    .replace(/[^a-z0-9\\u0600-\\u06FF]+/g, '-') // Include Urdu characters\n    .replace(/^-+|-+$/g, '')\n    .substring(0, 50);\n  \n  // Extract Pakistani-specific tags\n  const extractPakistaniTags = (text) => {\n    const pakistaniKeywords = {\n      'politics': ['imran khan', 'pti', 'pmln', 'ppp', 'parliament', 'election', 'government'],\n      'economy': ['rupee', 'inflation', 'gdp', 'economic', 'finance', 'budget'],\n      'security': ['terrorism', 'security', 'army', 'police', 'operation'],\n      'international': ['china', 'india', 'usa', 'afghanistan', 'cpec'],\n      'sports': ['cricket', 'hockey', 'football', 'olympics', 'babar azam'],\n      'education': ['university', 'school', 'education', 'students'],\n      'health': ['covid', 'health', 'hospital', 'medicine', 'vaccine']\n    };\n    \n    const foundTags = [];\n    const lowerText = text.toLowerCase();\n    \n    for (const [category, keywords] of Object.entries(pakistaniKeywords)) {\n      if (keywords.some(keyword => lowerText.includes(keyword))) {\n        foundTags.push(category);\n      }\n    }\n    \n    // Add generic keywords\n    const words = lowerText.match(/\\b\\w{4,}\\b/g) || [];\n    const uniqueWords = [...new Set(words)].slice(0, 3);\n    \n    return [...foundTags, ...uniqueWords].slice(0, 5);\n  };\n  \n  // Clean and process article\n  const processedArticle = {\n    title: article.title?.trim(),\n    summary: article.aiSummary || article.summary?.substring(0, 200) + '...',\n    content: article.content || article.summary,\n    source: article.source,\n    source_url: article.source_url,\n    published_at: article.published_at || new Date().toISOString(),\n    image_url: article.image_url,\n    region: 'Pakistan',\n    city: 'Multiple',\n    slug: slug + '-' + Date.now().toString().slice(-6), // Add timestamp to ensure uniqueness\n    tags: extractPakistaniTags(article.title + ' ' + (article.summary || ''))\n  };\n  \n  // Only include articles with valid titles\n  if (processedArticle.title && processedArticle.title.length > 10) {\n    processedArticles.push(processedArticle);\n  }\n}\n\nreturn processedArticles.map(article => ({ json: article }));"
+      },
+      "id": "process-articles",
+      "name": "Process Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "create",
+        "table": {
+          "schema": "public",
+          "table": "articles"
+        },
+        "fieldsToSend": "defineBelow",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.title }}"
+            },
+            {
+              "fieldId": "summary", 
+              "fieldValue": "={{ $json.summary }}"
+            },
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $json.content }}"
+            },
+            {
+              "fieldId": "source",
+              "fieldValue": "={{ $json.source }}"
+            },
+            {
+              "fieldId": "source_url",
+              "fieldValue": "={{ $json.source_url }}"
+            },
+            {
+              "fieldId": "published_at",
+              "fieldValue": "={{ $json.published_at }}"
+            },
+            {
+              "fieldId": "image_url",
+              "fieldValue": "={{ $json.image_url }}"
+            },
+            {
+              "fieldId": "region",
+              "fieldValue": "={{ $json.region }}"
+            },
+            {
+              "fieldId": "city",
+              "fieldValue": "={{ $json.city }}"
+            },
+            {
+              "fieldId": "slug",
+              "fieldValue": "={{ $json.slug }}"
+            },
+            {
+              "fieldId": "tags",
+              "fieldValue": "={{ $json.tags }}"
+            }
+          ]
+        },
+        "options": {
+          "queryName": "insertArticles"
+        }
+      },
+      "id": "save-to-database",
+      "name": "Save to Database", 
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "trendsync-supabase",
+          "name": "TrendSync Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"Pakistani news aggregation completed\",\n  \"articlesProcessed\": {{ $json.length }},\n  \"sources\": [\"Tribune\", \"Dawn\"],\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        240,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scrape Tribune",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Scrape Dawn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Tribune": {
+      "main": [
+        [
+          {
+            "node": "Extract Tribune Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Dawn": {
+      "main": [
+        [
+          {
+            "node": "Extract Dawn Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Tribune Articles": {
+      "main": [
+        [
+          {
+            "node": "Merge News Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Dawn Articles": {
+      "main": [
+        [
+          {
+            "node": "Merge News Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge News Sources": {
+      "main": [
+        [
+          {
+            "node": "AI Summarize Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Summarize Content": {
+      "main": [
+        [
+          {
+            "node": "Process Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Articles": {
+      "main": [
+        [
+          {
+            "node": "Save to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Database": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scrape Tribune",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Scrape Dawn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "pakistan-news-automation",
+      "name": "Pakistan News Automation"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1"
+}

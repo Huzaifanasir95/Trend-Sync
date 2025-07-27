@@ -1,17 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Globe, MapPin } from "lucide-react"
 
 const regions = [
-  { id: "all", name: "All Regions", icon: Globe },
-  { id: "asia", name: "Asia", cities: ["Tokyo", "Seoul", "Singapore", "Mumbai"] },
-  { id: "europe", name: "Europe", cities: ["London", "Paris", "Berlin", "Rome"] },
-  { id: "americas", name: "Americas", cities: ["New York", "Los Angeles", "Toronto", "São Paulo"] },
-  { id: "africa", name: "Africa", cities: ["Cairo", "Lagos", "Cape Town", "Nairobi"] },
-  { id: "oceania", name: "Oceania", cities: ["Sydney", "Melbourne", "Auckland", "Perth"] },
+  { id: "all", name: "All Pakistan", icon: Globe },
+  { id: "punjab", name: "Punjab", cities: ["Lahore", "Faisalabad", "Rawalpindi", "Gujranwala"] },
+  { id: "sindh", name: "Sindh", cities: ["Karachi", "Hyderabad", "Sukkur", "Larkana"] },
+  { id: "kpk", name: "KPK", cities: ["Peshawar", "Mardan", "Mingora", "Kohat"] },
+  { id: "balochistan", name: "Balochistan", cities: ["Quetta", "Gwadar", "Turbat", "Sibi"] },
+  { id: "capital", name: "Federal Capital", cities: ["Islamabad"] },
 ]
 
 export function RegionFilter() {
@@ -25,20 +23,23 @@ export function RegionFilter() {
       <div className="flex flex-wrap gap-2">
         {regions.map((region) => {
           const Icon = region.icon || MapPin
+          const isSelected = selectedRegion === region.id
           return (
-            <Button
+            <button
               key={region.id}
-              variant={selectedRegion === region.id ? "default" : "outline"}
-              size="sm"
               onClick={() => {
                 setSelectedRegion(region.id)
                 setSelectedCity(null)
               }}
-              className="flex items-center gap-2"
+              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isSelected 
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                  : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
+              }`}
             >
               <Icon className="h-4 w-4" />
               {region.name}
-            </Button>
+            </button>
           )
         })}
       </div>
@@ -47,22 +48,28 @@ export function RegionFilter() {
         <div className="space-y-2">
           <p className="text-sm text-gray-600">Filter by city:</p>
           <div className="flex flex-wrap gap-2">
-            <Badge
-              variant={selectedCity === null ? "default" : "secondary"}
-              className="cursor-pointer"
+            <span
+              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors cursor-pointer ${
+                selectedCity === null 
+                  ? 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80' 
+                  : 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              }`}
               onClick={() => setSelectedCity(null)}
             >
               All Cities
-            </Badge>
+            </span>
             {selectedRegionData.cities.map((city) => (
-              <Badge
+              <span
                 key={city}
-                variant={selectedCity === city ? "default" : "secondary"}
-                className="cursor-pointer"
+                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors cursor-pointer ${
+                  selectedCity === city 
+                    ? 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80' 
+                    : 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
                 onClick={() => setSelectedCity(city)}
               >
                 {city}
-              </Badge>
+              </span>
             ))}
           </div>
         </div>

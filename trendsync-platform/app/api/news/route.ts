@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { supabase } from "@/lib/supabase"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -8,27 +9,53 @@ export async function GET(request: NextRequest) {
   const sort = searchParams.get("sort") || "recent"
 
   try {
-    // TODO: In production, this would:
-    // 1. Query NewsAPI/GNews API based on region/city
-    // 2. Scrape full articles using Browse AI or Newspaper3k
-    // 3. Use AI to generate summaries
-    // 4. Store in Supabase/MongoDB
-    // 5. Query from database based on filters
+    let query = supabase
+      .from('articles')
+      .select('*')
 
-    // For now, return empty results since we removed dummy data
-    const articles: any[] = []
+    // Apply filters
+    if (region && region !== "all" && region !== "Global") {
+      query = query.eq('region', region)
+    }
+
+    if (city && city !== "Multiple") {
+      query = query.eq('city', city)
+    }
+
+    // Apply sorting
+    if (sort === "recent") {
+      query = query.order('published_at', { ascending: false })
+    } else {
+      query = query.order('created_at', { ascending: false })
+    }
+
+    // Apply limit
+    query = query.limit(limit)
+
+    const { data: articles, error } = await query
+
+    if (error) {
+      console.error("Database error:", error)
+      return NextResponse.json({ 
+        success: false, 
+        error: "Failed to fetch articles from database" 
+      }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      articles: articles,
-      total: 0,
+      articles: articles || [],
+      total: articles?.length || 0,
       page: 1,
       limit: limit,
-      hasMore: false
+      hasMore: (articles?.length || 0) === limit
     })
   } catch (error) {
     console.error("Error fetching news:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch news" }, { status: 500 })
+    return NextResponse.json({ 
+      success: false, 
+      error: "Failed to fetch news" 
+    }, { status: 500 })
   }
 }
 
