@@ -10,7 +10,7 @@
 ### Supabase API Credential Configuration:
 - **Name**: `TrendSync Supabase`
 - **Host**: `ymubvbnjkvamjfbssojl.supabase.co`
-- **Service Role Secret**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltYnV2Ym5qa3ZhbWpmYnNzb2psIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzU5Njc1MywiZXhwIjoyMDY5MTcyNzUzfQ.kbg1xyD6cpz6RKL8mk6kGDTgy4xS8JFC6LsOhaYTybA`
+- **Service Role Secret**: `eyJhbGciOiJIUzI1NiIsI`
 
 ## Step 2: Test the Connection
 
